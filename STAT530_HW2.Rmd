@@ -1,0 +1,104 @@
+---
+title: "STAT530: HW2"
+author: "Chunhua Ying"
+date: "2020/2/9"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\textbf{Consider the data set website names} Hw1_2020.xls or .csv.  \textbf{Answer the questions based on this data set:}
+
+\section{1}
+\textbf{Plot the scatter plot and mention any possible violation of assumptions you see in this plot.}
+
+From the plot: 1.the reationship is almost linear; 2.the variance is not increasing or decreasing obviously with respect to lead concentration; 3.No obvious outlier. Therefore no possible violation of assumption can be seen from this plot.
+```{r}
+#setwd("D:/Subject/WSU/STAT/Applied Linear Model/HW/HW2")
+data2=read.csv("../HW_1_2020.csv")
+plot(data2$leadconc,data2$mortality)
+```
+
+
+
+
+
+\section{2} 
+\textbf{Plot the residual versus predicted plot and the normal probability plots.  What do you see?}
+
+1. From residual versus predicted plot, the points are quite random, there is no obvious trend.
+
+2. From the normal Q-Q plots, most of the residual data, especially in the middle, are along normal distribution. But the data at both left and right side would departure from Normality.
+
+```{r}
+data2=read.csv("../HW_1_2020.csv")
+fit=lm(data2$mortality~data2$leadconc, data=data2)
+summary(fit)
+coefficients(fit)
+
+#plot of residual vs fitted values
+par(mfrow=c(1,2))
+plot(data2$leadconc, fit$res)
+
+# Normal probability plot of Residuals
+qqnorm(fit$res)
+qqline(fit$res)
+hist(fit$res)
+```
+
+
+
+
+
+\section{3}
+\textbf{Do the correlation test for normality.  For n>100, for alpha=.05, the critical value is: .987.}
+Pvalue is smaller than 0.05, therefore reject H0(residuals are normally distributed)
+```{r}
+library(stats)
+shapiro.test(fit$res)
+```
+
+
+
+
+\section{4}
+\textbf{Do the Brown Forsyth Test or the Breusch Pagan test (whichever you think is appropriate).  Discuss results.}
+
+Do the Breusch Pagan test below, the result Pvalue=0.8481, which is significantly larger than 0.05, so do not reject $H_0$(for log($\sigma_i$)=$\gamma_0+\gamma_1X_i$, $\gamma_1=0$), there is no sufficient evidence to conclude that variance linearly depend on X. This result support the assumption that the data set has equal variance.
+```{r}
+library(lmtest)
+bptest(fit)
+```
+
+
+\section{5}
+\textbf{Look at the Box-Cox transform to see what transformation if any is appropriate for the Y’s.}
+
+From the plot below, The ML function for $\lambda$ would be maximum at a value close to -1. Therefore $\lambda=-1$ ($\frac{1}{\sqrt{Y}}$) would be appropriate transformation for Y's. 
+```{r}
+library(MASS)
+boxcox(data2$mortality ~ data2$leadconc, data = data2,
+       lambda = seq(-2, 2.0, length = 10))
+```
+
+
+
+
+\section{6}
+\textbf{What is the value of the Durbin Watson statistic?}
+
+DW=1.7537
+```{r}
+dwtest(fit)
+```
+
+
+\section{7}
+\textbf{Give an example from your experience where you have faced multiple regression.}
+
+The amount of money I would have to use each month versus electricity power used, Hours I stay outside, Hours that I spend on Amazon within the month. 
+
+
+
