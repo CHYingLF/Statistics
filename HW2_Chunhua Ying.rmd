@@ -1,0 +1,408 @@
+---
+title: 'STAT 536: Homework 2'
+author: "Chunhua Ying"
+date: "2019/10/1"
+output: pdf_document
+---
+
+\section{Q1}
+\textbf{Show that following function forms a probability density function.}
+\[
+  f_X(x) =
+  \begin{cases}
+                                   1-|x|, & |x|\le 1 \\
+                                    0,    & otherwise
+  \end{cases}
+\]
+\textbf{Consider generating random numbers from the above density. Then provide all necessary details of how you would implement the following methods:}
+\begin{enumerate}
+\item[a.] The inverse method.
+\item[b.] The accept-reject method.
+\item[c.] Implement the method in (a) and generate 100 observations from the given density.
+\item[d.] Implement the method in (b) and generate 100 observations from the given density.
+\end{enumerate}
+\textbf{Please print out the generated data in both (c) and (d).}\
+\textit{Solution}
+Firstly show the function forms a probablity density function.\begin{eqnarray}\int_{-\infty}^{+\infty}f_X(x)dx&=&\int_{-1}^{0}(1+x)dx+\int_0^1(1-x)dx\nonumber\\&=&\frac{1}{2}+\frac{1}{2}\nonumber\\&=&1\end{eqnarray}
+Therefore, the function forms a probablity density function. 
+\begin{enumerate}
+\item[a.]
+Inverse method, according to the definition: $$F(x)=\int_{-\infty}^{x}f_X(x)dx$$
+We get the cdf as:\[F(x)=
+\begin{cases}
+\frac{1}{2}(x+1)^2,& -1<x<0\\
+-\frac{1}{2}(x-1)^2+1,&0\le x<1
+\end{cases}
+\]
+Then we derive the inverse function of F(x):
+\[x=
+\begin{cases}
+\sqrt{2y}-1,&0<y<\frac{1}{2}\\
+1-\sqrt{2(1-y)},&\frac{1}{2}\le y<1
+\end{cases}
+\]
+
+Hence, the Inverse algorithm would be:
+\begin{enumerate}
+\item[1.] Generate $u\sim U(0,1)$
+\item[2.] Caluculate $X=\sqrt{2u}-1$ if $0<u<\frac{1}{2}$; or calculate $X=1-\sqrt{2(1-u)}$ if $ \frac{1}{2}\le y<1$
+\item[3.] Repeat
+\end{enumerate}
+
+\item[b.]
+AR Method. Choose the following $U(-1,1)$ uniform distribution as instrumental distribution:\[
+g(x)=\begin{cases}\frac{1}{2},&x\in (-1,1)\\0,& otherwise\end{cases}
+\]
+Calculate the upbound($M$) of $\frac{f(x)}{g(x)}$,\ 
+when $x \in (-1,0)$:
+\begin{eqnarray}
+\frac{f(x)}{g(x)}&=&\frac{1+x}{0.5}=2(1+x)\nonumber\\\ M&=&2
+\end{eqnarray}
+when $x \in (0,1)$:
+\begin{eqnarray}
+\frac{f(x)}{g(x)}&=&\frac{1-x}{0.5}=2(1-x)\nonumber\\\ M&=&2
+\end{eqnarray}
+Therefore $M=2$, Thus the AR algorithm would be:
+\begin{enumerate}
+\item[1.] Generate $y\sim g$, $u\sim U(0,1)$
+\item[2.] Accept x=y if $u< \frac{f(y)}{M(y)} $
+\item[3.] Return to step 1 otherwise
+\end{enumerate}
+\item[c.] 
+\end{enumerate}
+```{r}
+f=function(x){
+  y=ifelse(x>0 &x<0.5,sqrt(2*x)-1,1-sqrt(2*(1-x)))
+}
+u=runif(100,0,1)
+X=f(u)
+hist(X)
+```
+
+d.\
+```{r}
+f=function(x){
+  f=ifelse(x>-1 &x<0, 1+x,1-x)
+}
+g=function(x){
+  g=ifelse(x>-1 & x<1, 1/2,0)
+}  
+ist=0;N=100;M=2;X=c()
+while(ist<N){
+  y=runif(1,-1,1);u=runif(1,0,1);s=f(y)/g(y)/M
+  if(u<s){ist=ist+1;X[ist]=y;}
+}
+hist(X)
+```
+\section{Q2}
+\textbf{Suppose $Z \sim N (0, 1)$ and we are interested in $p = P(Z > 3)$,}\begin{enumerate}
+\item[a.] Use the standard monte carlo approximation to estimate p with n = $10^4$. [Use rnorm to simulate normal
+random variables]
+\item[b.] Use a shifted exponential distribution as instrument, and use the importance sampler to estimate the same quantity with n = $10^4$.
+\end{enumerate}
+\textbf{Plot estimates of both Part (a) and (b) for each iteration along with the corresponding confidence bounds.}\
+\textit{Solution}\
+a.\qquad 
+we need to approximate $$\int_3^\infty\frac{1}{\sqrt{2\pi}}e^{-x^2/2}$$
+```{r}
+library(ggplot2)
+N=10^4;ist=0;z=3;x=c();mc=c();Upper=c();Lower=c();V=c()
+u=rnorm(N)
+for(i in 1:N){
+  x[i]=ifelse(u[i]>z,1,0)
+}
+for(i in 1:N){
+  mc[i]=mean(x[1:i])
+  V[i]=var(x[1:i])/i
+  Lower[i]=mc[i]-1.96*sqrt(V[i])
+  Upper[i]=mc[i]+1.96*sqrt(V[i])
+}
+int=mean(x)
+values=c(mc,Upper,Lower)
+type=c(rep('mc',N),rep('upper',N),rep('lower',N))
+iter=rep(seq(1:N),3)
+data=data.frame(val=values,tp=type,itr=iter)
+ggplot(data,aes(itr,val))+geom_point(aes(color=factor(tp)))
+
+```
+b.\
+Shifted expotential distribution with $\lambda =1$:$$g(x)=e^{-(x-3)}$$ Generate $X\sim g(x)$, to calculate$$\frac{1}{n}\sum_1^n Indic(x>3)\frac{f(y)}{g(y)}$$
+where$Indic(x>3)$ is 1 when x>3, and 0 otherwise.
+```{r}
+library(ggplot2)
+g=function(x){
+  y=exp(-(x-3))
+  return(y)
+}
+f=function(x){
+  y=1/sqrt(2*pi)*exp(-x^2/2)
+  return(y)
+}
+
+gsim=function(m){
+  u=runif(m,0,1);
+  v=-log(1-u)+3
+  return(v)
+}
+N=10^4;u=gsim(N);z=3;x=c();mc=c();Upper=c();Lower=c();V=c()
+for(i in 1:N){
+  x[i]=f(u[i])/g(u[i])
+}
+for(i in 1:N){
+  mc[i]=mean(x[1:i])
+  V[i]=var(x[1:i])/i
+  Lower[i]=mc[i]-1.96*sqrt(V[i])
+  Upper[i]=mc[i]+1.96*sqrt(V[i])
+}
+int=mean(x)
+values=c(mc,Upper,Lower)
+type=c(rep('mc',N),rep('upper',N),rep('lower',N))
+iter=rep(seq(1:N),3)
+data=data.frame(val=values,tp=type,itr=iter)
+ggplot(data,aes(itr,val))+geom_point(aes(color=factor(tp)))
+
+```
+
+\section{Q3}
+\textbf{Suppose X $\sim$ Cauchy(0, 1) and we are interested in p = P(0 < Z < 2),}
+\begin{enumerate}
+\item[a.] Use the standard monte carlo approximation to estimate p with n = $10^3$.
+\item[b.] Use a U(0, 1) distribution as instrument to compute the importance sampler estimate of the above probability with n = $10^3$.\end{enumerate}
+\textbf{Plot estimates of both Part (a) and (b) for each iteration along with the corresponding confidence bounds.}\
+\textit{Solution}\
+a. we need to estimate$$\int_0^2\frac{1}{\pi(1+x^2)}dx$$
+```{r}
+library(ggplot2)
+Nsim=1000;mc=c();upper=c();lower=c();V=c()
+x1=rnorm(Nsim);x2=rnorm(Nsim)
+y=x1/x2;yy=c()
+#hist(y)
+for(i in 1:Nsim){
+  yy[i]=ifelse(y[i]<2 & y[i]>0,1,0)
+}
+for(i in 1:Nsim){
+  mc[i]=mean(yy[1:i])
+  V[i]=i^(-1)*var(yy[1:i])
+  upper[i]=mc[i]+1.96*sqrt(V[i])
+  lower[i]=mc[i]-1.96*sqrt(V[i])
+  
+}
+int=mean(yy)
+int
+values=c(mc,upper,lower)
+type=c(rep('mc',Nsim),rep('upper',Nsim),rep('lower',Nsim))
+iter=rep(seq(1:Nsim),3)
+data=data.frame(val=values,tp=type,itr=iter)
+ggplot(data,aes(itr,val))+geom_point(aes(color=factor(tp)))
+
+```
+b. we need to estimate$$\int_0^2\frac{2}{\pi(1+x^2)}\times \frac{1}{2}dx$$
+```{r}
+library(ggplot2)
+Nsim=1000;mc=c();upper=c();lower=c();V=c()
+x1=runif(Nsim,0,2);yy=2/pi/(1+x1^2)
+#hist(y)
+for(i in 1:Nsim){
+  mc[i]=mean(yy[1:i])
+  V[i]=i^(-1)*var(yy[1:i])
+  upper[i]=mc[i]+1.96*sqrt(V[i])
+  lower[i]=mc[i]-1.96*sqrt(V[i])
+  
+}
+int=mean(yy)
+int
+values=c(mc,upper,lower)
+type=c(rep('mc',Nsim),rep('upper',Nsim),rep('lower',Nsim))
+iter=rep(seq(1:Nsim),3)
+data=data.frame(val=values,tp=type,itr=iter)
+ggplot(data,aes(itr,val))+geom_point(aes(color=factor(tp)))
+
+```
+
+\section{Q4}
+\begin{enumerate}
+\item[a.] Let $X\sim N(2,9),$ normal with mean 2 and variance 9. Then use the properties of expectations to find the exact value of $E[3X-1]$.
+\item[b.] Now, generate a random sample X1, ..., Xn from X for $n=10^3$ and obtain a monte carlo approximation of $E[3X-1]$ for each iteration of n. Plot the resulting values against the number of iterations and also plot the corresponding confidence intervals for each iteration.
+\end{enumerate}\
+\textit{Solution}
+[a.]\
+According to the properties of expectations, $E[3X-1]$ would be:
+\begin{eqnarray}
+  E[3X-1]&=&\int_{-\infty}^{+\infty}(3x-1)\frac{1}{3\sqrt{2\pi}}e^{-\frac{(x-2)^2}{2\times 9}}\nonumber\\
+         &=&\int_{-\infty}^{+\infty}3(x-2)\frac{1}{3\sqrt{2\pi}}e^{-\frac{(x-2)^2}{2\times 9}}+5\nonumber\\
+         &=&\frac{-9}{\sqrt{2\pi}}e^{-\frac{(x-2)^2}{18}}\biggr\vert_{-\infty}^\infty+5\nonumber\\
+         &=&5
+\end{eqnarray}
+Therefore, $E[3X-1]=5$\
+[b.]
+```{r}
+library(ggplot2)
+Nsim=10000;mc=c();upper=c();lower=c();V=c()
+u=2+3*rnorm(Nsim);y=(3*u-1)
+for(i in 1:Nsim){
+  mc[i]=mean(y[1:i])
+  V[i]=i^(-1)*var(y[1:i])
+  upper[i]=mc[i]+1.96*sqrt(V[i])
+  lower[i]=mc[i]-1.96*sqrt(V[i])
+  
+}
+values=c(mc,upper,lower)
+type=c(rep('mc',Nsim),rep('upper',Nsim),rep('lower',Nsim))
+iter=rep(seq(1:Nsim),3)
+data=data.frame(val=values,tp=type,itr=iter)
+ggplot(data,aes(itr,val))+geom_point(aes(color=factor(tp)))
+
+```
+
+ 
+\section{Q5}
+a. In Example 3.6 on page 86 of the book. Show that $\hat{p_1}=(y_{11}+y_{12})/n$ and $\hat{p_{ij}}=y_{ij}/n$\
+b. A famous medical experiment was conducted by Joseph Listerin the late 1800s to examine the relation between the use of disinfectant, carbolic acid and surgical success rates. The data are 
+\begin{table}[htbp]
+\centering
+\begin{tabular}{|p{.08\textwidth}|p{.2\textwidth}|p{.2\textwidth}|}
+\hline
+\multicolumn{3}{|c|}{Disinfectant}\\
+\hline
+ i & Yes & No  \\
+ \hline
+Success&34&19\\
+\hline
+Failure&6&16\\
+\hline
+\end{tabular}
+\end{table}
+Use the multinomial model to examine association between these variables. [Empirically determine the cutoff for the likelihood ratio statistic as done in class].\
+\textit{Solution}
+\begin{enumerate}
+\item[a.] The likelihood function is$$l(p|y)=p_{11}^{y_{11}}p_{12}^{y_{12}}p_{21}^{y_{21}}p_{22}^{y_{22}}$$
+Under the $H_0: P_{11}=p_1p_2$,automatically we have$$p_{12}=p_1(1-p_2),\quad p_{21}=(1-p_1)p_2,\quad p_{22}=(1-p_1)(1-p_2)$$ substitute into likelihood function:
+\begin{eqnarray}
+log l(p|y)&=&y_{11}log(p_1p_2)+y_{12}log(p_1(1-p_2))+y_{21}log(p_2(1-p_1))+y_{22}log((1-p_1)(1-p_2))\nonumber\\
+\frac{\partial log l}{\partial p_1}&=&\frac{y_{11}}{p_1}+\frac{y_{12}}{p_1}+\frac{-y_{21}}{1-p_1}+\frac{-y_{22}}{1-p_1}
+\end{eqnarray}
+Set the derivative to be 0, we get $$p_{1}=\frac{y_{11}+y_{12}}{n}$$ similar precedure we have $$p_2=\frac{y_{21}+y_{22}}{n}$$
+If there is no $H_0$, then using Lagrange Multiplier Method, $g(x)=p_{11}+p_{12}+p_{21}+p_{22}-1$
+\begin{eqnarray}
+\frac{\partial log l}{\partial p_{11}}&=&\frac{y_{11}}{p_{11}}=\lambda\frac{\partial g}{\partial p_{11}}=\lambda\nonumber\\
+\frac{\partial log l}{\partial p_{12}}&=&\frac{y_{12}}{p_{12}}=\lambda\frac{\partial g}{\partial p_{12}}=\lambda\nonumber\\
+\frac{\partial log l}{\partial p_{21}}&=&\frac{y_{21}}{p_{21}}=\lambda\frac{\partial g}{\partial p_{21}}=\lambda\nonumber\\
+\frac{\partial log l}{\partial p_{22}}&=&\frac{y_{12}}{p_{22}}=\lambda\frac{\partial g}{\partial p_{22}}=\lambda\nonumber\\
+\end{eqnarray}
+combine with$y_{11}+y_{12}+y_{21}+y_{22}=n$, we get$$p_{11}=\frac{y_{11}}{n},\quad p_{12}=\frac{y_{12}}{n},\quad p_{21}=\frac{y_{21}}{n},\quad p_{22}=\frac{y_{22}}{n}$$
+\end{enumerate}
+b.
+```{r}
+N=34+19+6+16
+HL=function(p11,p12,p21,p22){
+  p1h=p11+p12;p2h=p21+p22
+  p11=p1h*p2h;p12=p1h*(1-p2h);p21=p2h*(1-p1h);p22=(1-p1h)(1-p2h)
+  y11=p11*N;y12=p12*N;y21=p21*N;y22=p22*N
+  s=p11^y11*p12^y12*p21^y21*p22^y22
+  return(s)
+}
+L=function(p11,p12,p21,p22){
+  p1h=p11+p12;p2h=p21+p22
+  p11=p1h*p2h;p12=p1h*(1-p2h);p21=p2h*(1-p1h);p22=(1-p1h)(1-p2h)
+  y11=p11*N;y12=p12*N;y21=p21*N;y22=p22*N
+  s=p11^y11*p12^y12*p21^y21*p22^y22
+  return(s)
+}
+```
+
+
+\section{Q6}
+\textbf{Consider the truncated normal distribution with density $$f(x)\propto exp(-x^2/2)\uparrow[x>1]$$ Evaluate P(X>1.5) using a shifted exponential distribution as instrument with density $$g(x)=exp[-(x-1)]\uparrow[x>1]$$}
+\textit{Solution}
+Use the alternative Importance Sampling method, which is$$\frac{\sum_{i=1}^nh(y_i)f(y_i)/g(y_i)}{\sum_{i=1}^{n}f(y_i)/g(y_i)}$$ where$$h(y)=\uparrow(y>1.5),\quad f(y)=exp(-x^2/2)\uparrow[x>1],\quad g(y)=exp[-(x-1)]\uparrow[x>1]$$
+```{r}
+f=function(x){
+  y=ifelse(x>1,exp(-x^2/2),0)
+  return(y)
+}
+g=function(x){
+  y=ifelse(x>1,exp(-(x-1)))
+  return(y)
+}
+
+g_sim=function(m){
+  x=runif(m,0,1);u=-log(1-x)+1
+  return(u)
+}
+N=1000
+y=g_sim(N)
+h=ifelse(y>1.5,1,0)
+yy=sum(h*f(y)*g(y))/sum(f(y)*g(y))
+yy
+```
+So which is $P(X>1.5)$
+
+\section{Q7}
+\textbf{Use the Cholesky decomposition to ggenerate 1000 trivariate normal deriates $X_1,...,X_{1000}$} such that each follows multivariate normal distribution with mean $\mu=(-2,4,3)$ and covariance matrix
+\[\sum= \left[ {\begin{array}{ccc}
+   2 & -1 & 0.5 \\
+   -1 & 4 & 1 \\
+   0.5 &1&5
+  \end{array} } \right]
+\]
+\begin{enumerate}
+\item[a.] Calculate the sample mean and sample variance for each of the three coordinates.
+\item[b.] From the generated data, obtain a typical monte carlo approximation of the matrix $\sum$
+\end{enumerate}
+b. The maximum likelihood estimators of $\sum$ would be $$\hat{\sum}=\frac{1}{n}\sum_{j=1}^n(\textbf{X}_j-\overline{X})(\textbf{X}_j-\overline{X})$$
+```{r}
+Nsim=1000;p=10;mu=c(-2,4,3);sig=c()
+v=c(2,-1,0.5,-1,4,1,0.5,1,5);Sig=matrix(v,3,3)
+p=dim(Sig)[1]
+multi_normal=function(Nsim,mu,Sig){
+  x=matrix(rnorm(Nsim*p),nrow=Nsim,ncol=p)
+  Gamma=chol(Sig)
+  z=mu+t(Gamma)%*%t(x)
+  return(t(z))}
+z=multi_normal(Nsim,mu,Sig=Sig)
+mu_sim=colSums(z)/Nsim
+sig[1]=var(z[,1])
+sig[2]=var(z[,2])
+sig[3]=var(z[,3])
+mu_sim
+sqrt(sig)
+mu2=rep(mu_sim,N)
+mu2=matrix(mu2,nrow=Nsim,ncol=p,byrow=TRUE)
+Sig_app=t(z-mu2)%*%(z-mu2)/Nsim
+Sig_app
+
+```
+\newpage
+\section{Q8}
+\textbf{Solve Q2.39 on Page 70 of the book:}\
+Step 1 of $[A.7]$ relies on simulation from $g_n$. Show that we can write
+$$
+g_n=w_n^{-1}\{\sum_{i=0}^{r_n}e^{\alpha_ix+\beta_i}\prod_{[x_i,x_{i+1}]}(x)+e^{\alpha_{-1}x+\beta_{-1}}
+\prod_{[-\infty,x_0]}(x)+e^{\alpha_{r_n+1}x+\beta_{r_n+1}}\prod_{[x_{n+1},\infty]}(x)\}
+$$
+where $y=\alpha_i x+\beta_i$ is the equation of the segment of line corresponding to $g_n$ on $[x_i,x_{i+1}]$, $r_n$ denotes the number of segements, and
+\begin{eqnarray}
+w_n&=&\int_{-\infty}^{x_0}e^{\alpha_{-1}x+\beta_{-1}}dx+\sum_{i=0}^n\int_{x_i}^{x_{i+1}}e^{\alpha_ix+\beta_i}dx+\int_{x_{n+1}}^{+\infty}e^{\alpha_{r_n+1}x+\beta_{r_n+1}}dx\nonumber\\&=&\frac{e^{\alpha_{-1}x_0}+\beta_{-1}}{\alpha_{-1}}+\sum_{i=0}^{n}e^{\beta_i}\frac{e^{\alpha_ix_{i+1}}-e^{\alpha_ix_i}}{\alpha_i}-\frac{e^{\alpha_{r_n}x_{n+1}}}{\alpha_{r_n+1}}
+\end{eqnarray}
+when supp(f)=R. Verify that this representation as a sequence validates the following algorithm for simulation from $g_n$
+
+\textbf{Algorithm A.17 -Supplemental ARS Algorithm -}\begin{enumerate}
+\item[1.] Select the interval $[x_i,x_{i+1}]$ with probability $$e^{\beta_i}\frac{e^{\alpha_ix_{i+1}}-e^{\alpha_ix_i}}{w_n\alpha_i}$$
+\item[2.] Generate $u\sim U(0,1)$, and take $$X=\alpha_i^{-1}log[e^{\alpha_ix_i}+u(e^{\alpha_i x_{i+1}}-e^{\alpha_ix_i})]$$
+\end{enumerate}
+Note that the segment $\alpha_i+\beta_ix$ is not the same as the line $a_i+b_ix$ used in (2.16)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
